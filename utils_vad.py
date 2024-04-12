@@ -175,7 +175,6 @@ def make_visualization(probs, step):
 def get_speech_timestamps(audio: torch.Tensor,
                           model,
                           threshold: float = 0.5,
-                          silence_threshold_ms: int = 0.5,
                           sampling_rate: int = 16000,
                           min_speech_duration_ms: int = 250,
                           max_speech_duration_s: float = float('inf'),
@@ -199,9 +198,6 @@ def get_speech_timestamps(audio: torch.Tensor,
     threshold: float (default - 0.5)
         Speech threshold. Silero VAD outputs speech probabilities for each audio chunk, probabilities ABOVE this value are considered as SPEECH.
         It is better to tune this parameter for each dataset separately, but "lazy" 0.5 is pretty good for most datasets.
-
-    silence_threshold_ms: int (default - 250 milliseconds)
-        Minimum duration of silent pauses in milliseconds. Segments of audio with pauses longer than this threshold will be considered as non-speech segments.    
 
     sampling_rate: int (default - 16000)
         Currently silero VAD models support 8000 and 16000 sample rates
@@ -293,7 +289,6 @@ def get_speech_timestamps(audio: torch.Tensor,
     speeches = []
     current_speech = {}
     neg_threshold = threshold - 0.15
-    silence_threshold_samples = sampling_rate * silence_threshold_ms / 1000
     temp_end = 0 # to save potential segment end (and tolerate some silence)
     prev_end = next_start = 0 # to save potential segment limits in case of maximum segment size reached
 
@@ -301,7 +296,7 @@ def get_speech_timestamps(audio: torch.Tensor,
         if (speech_prob >= threshold) and temp_end:
             temp_end = 0
             if next_start < prev_end:
-                next_start = window_size_samples * i
+               next_start = window_size_samples * i
 
         if (speech_prob >= threshold) and not triggered:
             triggered = True
@@ -331,7 +326,7 @@ def get_speech_timestamps(audio: torch.Tensor,
                 temp_end = window_size_samples * i
             if ((window_size_samples * i) - temp_end) > min_silence_samples_at_max_speech : # condition to avoid cutting in very short silence
                 prev_end = temp_end
-            if (window_size_samples * i) - temp_end < min_silence_samples or (window_size_samples * i) - temp_end < silence_threshold_samples:
+            if (window_size_samples * i) - temp_end < min_silence_samples:
                 continue
             else:
                 current_speech['end'] = temp_end
